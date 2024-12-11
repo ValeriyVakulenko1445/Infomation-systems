@@ -1,5 +1,14 @@
 class Client:
     def __init__(self, client_id: int, full_name: str, passport_data: str, contact_number: str, address: str):
+        if not self.validate_full_name(full_name):
+            raise ValueError("Invalid full name")
+        if not self.validate_passport_data(passport_data):
+            raise ValueError("Invalid passport data")
+        if not self.validate_contact_number(contact_number):
+            raise ValueError("Invalid contact number")
+        if not self.validate_address(address):
+            raise ValueError("Invalid address")
+
         self.__client_id = client_id
         self.__full_name = full_name
         self.__passport_data = passport_data
@@ -24,13 +33,41 @@ class Client:
 
     # Setters
     def set_full_name(self, full_name: str):
+        if not self.validate_full_name(full_name):
+            raise ValueError("Invalid full name")
         self.__full_name = full_name
 
     def set_passport_data(self, passport_data: str):
+        if not self.validate_passport_data(passport_data):
+            raise ValueError("Invalid passport data")
         self.__passport_data = passport_data
 
     def set_contact_number(self, contact_number: str):
+        if not self.validate_contact_number(contact_number):
+            raise ValueError("Invalid contact number")
         self.__contact_number = contact_number
 
     def set_address(self, address: str):
+        if not self.validate_address(address):
+            raise ValueError("Invalid address")
         self.__address = address
+
+#Методы валидации
+    @staticmethod
+    def validate_full_name(full_name: str) -> bool:
+        return bool(full_name) and full_name.replace(" ", "").isalpha()
+
+    @staticmethod
+    def validate_passport_data(passport_data: str) -> bool:
+#Паспортные данные идут в формате букв-цифр и имеют определенную длину
+        return bool(re.fullmatch(r"\w{10}", passport_data))
+
+@staticmethod
+    def validate_contact_number(contact_number: str) -> bool:
+#Тут номер пишется в допустимом формате
+        return bool(re.fullmatch(r"\+?\d{10,15}", contact_number))
+
+    @staticmethod
+    def validate_address(address: str) -> bool:
+        return bool(address)
+
