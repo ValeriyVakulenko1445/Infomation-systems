@@ -1,12 +1,30 @@
-class Client:
-    def __init__(self, client_id: int, full_name: str, passport_data: str, contact_number: str, address: str):
-        self.__client_id = client_id
-        self.__full_name = self.validate_and_set("validate_full_name", full_name)
-        self.__passport_data = self.validate_and_set("validate_passport_data", passport_data)
-        self.__contact_number = self.validate_and_set("validate_contact_number", contact_number)
-        self.__address = self.validate_and_set("validate_address", address)
+import re
+import json
 
-    # Getters
+class Client:
+
+    def __init__(self, *args):
+        if len(args) == 1 and isinstance(args[0], str):
+            # Initialize from JSON string
+            data = self.parse_json(args[0])
+            self.__client_id = data["client_id"]
+            self.__full_name = self.validate_and_set("validate_full_name", data["full_name"])
+            self.__passport_data = self.validate_and_set("validate_passport_data", data["passport_data"])
+            self.__contact_number = self.validate_and_set("validate_contact_number", data["contact_number"])
+            self.__address = self.validate_and_set("validate_address", data["address"])
+        elif len(args) == 5:
+            # Инициализация с помощью явных аргументов
+            client_id, full_name, passport_data, contact_number, address = args
+            self.__client_id = client_id
+            self.__full_name = self.validate_and_set("validate_full_name", full_name)
+            self.__passport_data = self.validate_and_set("validate_passport_data", passport_data)
+            self.__contact_number = self.validate_and_set("validate_contact_number", contact_number)
+            self.__address = self.validate_and_set("validate_address", address)
+        else:
+            raise ValueError("Invalid arguments for constructor")
+
+
+    # Геттеры
     def get_client_id(self):
         return self.__client_id
 
@@ -22,7 +40,7 @@ class Client:
     def get_address(self):
         return self.__address
 
-    # Setters
+    # Сеттеры
     def set_full_name(self, full_name: str):
         self.__full_name = self.validate_and_set("validate_full_name", full_name)
 
@@ -61,4 +79,17 @@ class Client:
     @staticmethod
     def validate_address(address: str) -> bool:
         return bool(address)
+
+    # Метод анализа
+    @staticmethod
+    def parse_json(json_string: str) -> dict:
+        try:
+            data = json.loads(json_string)
+            required_keys = {"client_id", "full_name", "passport_data", "contact_number", "address"}
+            if not required_keys.issubset(data.keys()):
+                raise ValueError("Missing required keys in JSON data")
+            return data
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON format")
+
 
