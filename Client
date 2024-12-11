@@ -1,19 +1,10 @@
 class Client:
     def __init__(self, client_id: int, full_name: str, passport_data: str, contact_number: str, address: str):
-        if not self.validate_full_name(full_name):
-            raise ValueError("Invalid full name")
-        if not self.validate_passport_data(passport_data):
-            raise ValueError("Invalid passport data")
-        if not self.validate_contact_number(contact_number):
-            raise ValueError("Invalid contact number")
-        if not self.validate_address(address):
-            raise ValueError("Invalid address")
-
         self.__client_id = client_id
-        self.__full_name = full_name
-        self.__passport_data = passport_data
-        self.__contact_number = contact_number
-        self.__address = address
+        self.__full_name = self.validate_and_set("validate_full_name", full_name)
+        self.__passport_data = self.validate_and_set("validate_passport_data", passport_data)
+        self.__contact_number = self.validate_and_set("validate_contact_number", contact_number)
+        self.__address = self.validate_and_set("validate_address", address)
 
     # Getters
     def get_client_id(self):
@@ -33,24 +24,24 @@ class Client:
 
     # Setters
     def set_full_name(self, full_name: str):
-        if not self.validate_full_name(full_name):
-            raise ValueError("Invalid full name")
-        self.__full_name = full_name
+        self.__full_name = self.validate_and_set("validate_full_name", full_name)
 
     def set_passport_data(self, passport_data: str):
-        if not self.validate_passport_data(passport_data):
-            raise ValueError("Invalid passport data")
-        self.__passport_data = passport_data
+        self.__passport_data = self.validate_and_set("validate_passport_data", passport_data)
 
     def set_contact_number(self, contact_number: str):
-        if not self.validate_contact_number(contact_number):
-            raise ValueError("Invalid contact number")
-        self.__contact_number = contact_number
+        self.__contact_number = self.validate_and_set("validate_contact_number", contact_number)
 
     def set_address(self, address: str):
-        if not self.validate_address(address):
-            raise ValueError("Invalid address")
-        self.__address = address
+        self.__address = self.validate_and_set("validate_address", address) 
+
+# Устранение повтора валидации, с помощью главного метода
+    @staticmethod
+    def validate_and_set(validation_method: str, value: str):
+        validator = getattr(Client, validation_method, None)
+        if not validator or not validator(value):
+            raise ValueError(f"Invalid value for {validation_method.replace('validate_', '')}")
+        return value
 
 #Методы валидации
     @staticmethod
