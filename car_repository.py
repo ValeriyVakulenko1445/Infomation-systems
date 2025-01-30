@@ -256,12 +256,6 @@ class CarRepDB(CarRepBase):
                 cur.execute("SELECT * FROM cars WHERE car_id = %s", (car_id,))
                 return cur.fetchone()
 
-    def get_k_n_short_list(self, k, n):
-        with self.db_connection.get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT * FROM cars ORDER BY car_id LIMIT %s OFFSET %s", (k, n * k))
-                return cur.fetchall()
-
     def add_car(self, car):
         with self.db_connection.get_connection() as conn:
             with conn.cursor() as cur:
@@ -284,9 +278,26 @@ class CarRepDB(CarRepBase):
                 cur.execute("DELETE FROM cars WHERE car_id = %s", (car_id,))
                 conn.commit()
 
+# Декоратор для работы с БД
+class FilterSortDBDecorator(CarRepBase):
+    def __init__(self, repository, filter_query=None, sort_column=None):
+        self.repository = repository
+        self.filter_query = filter_query
+        self.sort_column = sort_column
+
+    def get_k_n_short_list(self, k, n):
+        query = f"SELECT * FROM cars LIMIT {k} OFFSET {n * k}"
+        if self.filter_query:
+            query = f"SELECT * FROM ({query}) AS filtered WHERE {self.filter_query}"
+        if self.sort_column:
+            query += f" ORDER BY {self.sort_column}"
+        return self.repository.execute_query(query)
+
     def get_count(self):
-        with self.db_connection.get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM cars")
-                return cur.fetchone()[0]
+        query = "SELECT COUNT(*) FROM cars"
+        if self.filter_query:
+            query = f"SELECT COUNT(*) FROM (SELECT * FROM cars WHERE {self.filter_query}) AS filtered"
+        return self.repository.execute_query(query)[0][0]
+
+
 
