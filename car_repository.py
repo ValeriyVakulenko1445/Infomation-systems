@@ -35,7 +35,7 @@ class CarRepBase:
     def get_count(self):
         raise NotImplementedError
 
-# Репозиторий JSON
+#JSON
 class CarRepJSON(CarRepBase):
     def __init__(self, filename="cars.json"):
         self.filename = filename
@@ -86,7 +86,7 @@ class CarRepJSON(CarRepBase):
     def get_count(self):
         return len(self.read_all())
 
-# Репозиторий YAML
+# YAML
 class CarRepYAML(CarRepBase):
     def __init__(self, filename="cars.yaml"):
         self.filename = filename
@@ -136,4 +136,51 @@ class CarRepYAML(CarRepBase):
 
     def get_count(self):
         return len(self.read_all())
+#Работа с БД
+class CarRepDB(CarRepBase):
+    def __init__(self, db_config):
+        self.db_config = db_config
+
+    def connect(self):
+        return psycopg2.connect(**self.db_config)
+
+    def get_by_id(self, car_id):
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM cars WHERE car_id = %s", (car_id,))
+                return cur.fetchone()
+
+    def get_k_n_short_list(self, k, n):
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM cars ORDER BY car_id LIMIT %s OFFSET %s", (k, n * k))
+                return cur.fetchall()
+
+    def add_car(self, car):
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO cars (brand, model, year, rental_price_per_day) VALUES (%s, %s, %s, %s) RETURNING car_id", 
+                            (car.brand, car.model, car.year, car.rental_price_per_day))
+                conn.commit()
+                return cur.fetchone()[0]
+
+    def update_car(self, car_id, new_car):
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE cars SET brand = %s, model = %s, year = %s, rental_price_per_day = %s WHERE car_id = %s", 
+                            (new_car.brand, new_car.model, new_car.year, new_car.rental_price_per_day, car_id))
+                conn.commit()
+                return cur.rowcount > 0
+
+    def delete_car(self, car_id):
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM cars WHERE car_id = %s", (car_id,))
+                conn.commit()
+
+    def get_count(self):
+        with self.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM cars")
+                return cur.fetchone()[0]
 
