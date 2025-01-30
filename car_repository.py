@@ -12,7 +12,7 @@ class Car:
         self.year = year
         self.rental_price_per_day = rental_price_per_day
 
-# Базовый репозиторий
+# База
 class CarRepBase:
     def get_by_id(self, car_id):
         raise NotImplementedError
@@ -34,6 +34,52 @@ class CarRepBase:
 
     def get_count(self):
         raise NotImplementedError
+
+# Адаптер для репозиториев
+class CarRepositoryAdapter(CarRepBase):
+    def __init__(self, repository):
+        self.repository = repository
+
+    def get_by_id(self, car_id):
+        return self.repository.get_by_id(car_id)
+
+    def get_k_n_short_list(self, k, n):
+        return self.repository.get_k_n_short_list(k, n)
+
+    def sort_by_field(self, field):
+        return self.repository.sort_by_field(field)
+
+    def add_car(self, car):
+        return self.repository.add_car(car)
+
+    def update_car(self, car_id, new_car):
+        return self.repository.update_car(car_id, new_car)
+
+    def delete_car(self, car_id):
+        return self.repository.delete_car(car_id)
+
+    def get_count(self):
+        return self.repository.get_count()
+
+# Декоратор для фильтрации и сортировки
+class FilterSortDecorator(CarRepBase):
+    def __init__(self, repository, filter_func=None, sort_key=None):
+        self.repository = repository
+        self.filter_func = filter_func
+        self.sort_key = sort_key
+
+    def get_k_n_short_list(self, k, n):
+        cars = self.repository.get_k_n_short_list(k, n)
+        if self.filter_func:
+            cars = list(filter(self.filter_func, cars))
+        if self.sort_key:
+            cars.sort(key=lambda car: car[self.sort_key])
+        return cars
+
+    def get_count(self):
+        if self.filter_func:
+            return len(list(filter(self.filter_func, self.repository.get_k_n_short_list(1000, 0))))
+        return self.repository.get_count()
 
 #JSON
 class CarRepJSON(CarRepBase):
