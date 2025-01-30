@@ -100,10 +100,6 @@ class CarRepJSON(CarRepBase):
     def get_by_id(self, car_id):
         return next((car for car in self.read_all() if car["car_id"] == car_id), None)
 
-    def get_k_n_short_list(self, k, n):
-        data = self.read_all()
-        return data[n * k:(n + 1) * k]
-
     def sort_by_field(self, field):
         data = self.read_all()
         data.sort(key=lambda x: x[field])
@@ -128,9 +124,6 @@ class CarRepJSON(CarRepBase):
         data = self.read_all()
         data = [car for car in data if car["car_id"] != car_id]
         self.write_all(data)
-
-    def get_count(self):
-        return len(self.read_all())
 
 # YAML
 class CarRepYAML(CarRepBase):
@@ -151,10 +144,6 @@ class CarRepYAML(CarRepBase):
     def get_by_id(self, car_id):
         return next((car for car in self.read_all() if car["car_id"] == car_id), None)
 
-    def get_k_n_short_list(self, k, n):
-        data = self.read_all()
-        return data[n * k:(n + 1) * k]
-
     def sort_by_field(self, field):
         data = self.read_all()
         data.sort(key=lambda x: x[field])
@@ -180,8 +169,6 @@ class CarRepYAML(CarRepBase):
         data = [car for car in data if car["car_id"] != car_id]
         self.write_all(data)
 
-    def get_count(self):
-        return len(self.read_all())
 #Работа с БД
 class CarRepDB(CarRepBase):
     def __init__(self, db_config):
@@ -299,5 +286,23 @@ class FilterSortDBDecorator(CarRepBase):
             query = f"SELECT COUNT(*) FROM (SELECT * FROM cars WHERE {self.filter_query}) AS filtered"
         return self.repository.execute_query(query)[0][0]
 
+# Декоратор для работы с JSON/YAML
+class FilterSortFileDecorator(CarRepBase):
+    def __init__(self, repository, filter_func=None, sort_key=None):
+        self.repository = repository
+        self.filter_func = filter_func
+        self.sort_key = sort_key
 
+    def get_k_n_short_list(self, k, n):
+        cars = self.repository.get_k_n_short_list(k, n)
+        if self.filter_func:
+            cars = list(filter(self.filter_func, cars))
+        if self.sort_key:
+            cars.sort(key=lambda car: car[self.sort_key])
+        return cars
+
+    def get_count(self):
+        if self.filter_func:
+            return len(list(filter(self.filter_func, self.repository.get_k_n_short_list(1000, 0))))
+        return self.repository.get_count()
 
