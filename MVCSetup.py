@@ -92,12 +92,73 @@ class CarView(Observer):
     def __init__(self, controller):
         self.controller = controller
         self.controller.repository.add_observer(self)
+        self.root = tk.Tk()
+        self.root.title("Car Rental System")
+        self.create_widgets()
+        self.update()
+        self.root.mainloop()
+
+    def create_widgets(self):
+        self.tree = ttk.Treeview(self.root, columns=("ID", "Brand", "Model", "Year", "Price"), show="headings")
+        self.tree.heading("ID", text="ID")
+        self.tree.heading("Brand", text="Brand")
+        self.tree.heading("Model", text="Model")
+        self.tree.heading("Year", text="Year")
+        self.tree.heading("Price", text="Price per day")
+        self.tree.pack(fill=tk.BOTH, expand=True)
+        self.tree.bind("<Double-1>", self.show_car_details)
 
     def update(self):
-        print("Данные обновлены. Перерисовываем интерфейс.")
-        self.display_cars()
-
-    def display_cars(self):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
         cars = self.controller.get_all_cars()
         for car in cars:
-            print(f"{car['car_id']}: {car['brand']} {car['model']} - {car['rental_price_per_day']} руб/день")
+            self.tree.insert("", tk.END, values=(car['car_id'], car['brand'], car['model'], car['year'], car['rental_price_per_day']))
+
+    def show_car_details(self, event):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            return
+        car_data = self.tree.item(selected_item, "values")
+        messagebox.showinfo("Car Details", f"Brand: {car_data[1]}\nModel: {car_data[2]}\nYear: {car_data[3]}\nPrice per day: {car_data[4]}")
+
+# Пример запуска
+if __name__ == "__main__":
+    class MockCarRepository(CarRepBase):
+        def __init__(self):
+            super().__init__()
+            self.cars = [
+                {"car_id": 1, "brand": "Toyota", "model": "Camry", "year": 2020, "rental_price_per_day": 50},
+                {"car_id": 2, "brand": "Ford", "model": "Focus", "year": 2019, "rental_price_per_day": 40}
+            ]
+        
+        def get_by_id(self, car_id):
+            return next((car for car in self.cars if car["car_id"] == car_id), None)
+
+        def get_k_n_short_list(self, k, n):
+            return self.cars[n*k:(n+1)*k]
+
+        def sort_by_field(self, field):
+            self.cars.sort(key=lambda x: x[field])
+
+        def add_car(self, car):
+            self.cars.append(car)
+            self.notify_observers()
+
+        def update_car(self, car_id, new_car):
+            for idx, car in enumerate(self.cars):
+                if car["car_id"] == car_id:
+                    self.cars[idx] = new_car
+                    self.notify_observers()
+                    break
+
+        def delete_car(self, car_id):
+            self.cars = [car for car in self.cars if car["car_id"] != car_id]
+            self.notify_observers()
+
+        def get_count(self):
+            return len(self.cars)
+
+    repo = MockCarRepository()
+    controller = CarController(repo)
+    view = CarView(controller)
