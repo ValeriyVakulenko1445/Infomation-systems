@@ -87,21 +87,6 @@ class CarController:
         self.repository.delete_car(car_id)
         self.repository.notify_observers()
 
-# Контроллер для окна добавления автомобиля
-class AddCarController:
-    def __init__(self, repository, parent_view):
-        self.repository = repository
-        self.parent_view = parent_view
-
-    def add_car(self, brand, model, year, price):
-        if not brand or not model or not year.isdigit() or not price.replace('.', '', 1).isdigit():
-            messagebox.showerror("Ошибка", "Некорректные данные")
-            return
-        new_id = max([car['car_id'] for car in self.repository.cars], default=0) + 1
-        new_car = {"car_id": new_id, "brand": brand, "model": model, "year": int(year), "rental_price_per_day": float(price)}
-        self.repository.add_car(new_car)
-        self.parent_view.update()
-
 # View
 class CarView(Observer):
     def __init__(self, controller):
@@ -122,9 +107,6 @@ class CarView(Observer):
         self.tree.heading("Price", text="Price per day")
         self.tree.pack(fill=tk.BOTH, expand=True)
         self.tree.bind("<Double-1>", self.show_car_details)
-        
-        self.add_button = tk.Button(self.root, text="Добавить", command=self.open_add_window)
-        self.add_button.pack()
 
     def update(self):
         for row in self.tree.get_children():
@@ -139,70 +121,63 @@ class CarView(Observer):
             return
         car_data = self.tree.item(selected_item, "values")
         messagebox.showinfo("Car Details", f"Brand: {car_data[1]}\nModel: {car_data[2]}\nYear: {car_data[3]}\nPrice per day: {car_data[4]}")
+
+# Форма добавления/редактирования автомобиля
+class CarFormView(tk.Toplevel):
+    def __init__(self, parent, controller, car=None):
+        super().__init__(parent)
+        self.controller = controller
+        self.car = car
+        self.title("Car Form")
+        self.create_widgets()
+        self.load_car_data()
+
+    def create_widgets(self):
+        self.lbl_brand = tk.Label(self, text="Brand")
+        self.lbl_brand.pack()
+        self.entry_brand = tk.Entry(self)
+        self.entry_brand.pack()
+        
+        self.lbl_model = tk.Label(self, text="Model")
+        self.lbl_model.pack()
+        self.entry_model = tk.Entry(self)
+        self.entry_model.pack()
+        
+        self.lbl_year = tk.Label(self, text="Year")
+        self.lbl_year.pack()
+        self.entry_year = tk.Entry(self)
+        self.entry_year.pack()
+        
+        self.lbl_price = tk.Label(self, text="Price per day")
+        self.lbl_price.pack()
+        self.entry_price = tk.Entry(self)
+        self.entry_price.pack()
+        
+        self.btn_save = tk.Button(self, text="Save", command=self.save_car)
+        self.btn_save.pack()
+
+    def load_car_data(self):
+        if self.car:
+            self.entry_brand.insert(0, self.car['brand'])
+            self.entry_model.insert(0, self.car['model'])
+            self.entry_year.insert(0, self.car['year'])
+            self.entry_price.insert(0, self.car['rental_price_per_day'])
     
-    def open_add_window(self):
-        AddCarView(self.controller.repository, self)
-
-# Окно добавления автомобиля
-class AddCarView:
-    def __init__(self, repository, parent_view):
-        self.controller = AddCarController(repository, parent_view)
-        self.window = tk.Toplevel()
-        self.window.title("Добавить автомобиль")
-
-        tk.Label(self.window, text="Brand:").pack()
-        self.brand_entry = tk.Entry(self.window)
-        self.brand_entry.pack()
-
-        tk.Label(self.window, text="Model:").pack()
-        self.model_entry = tk.Entry(self.window)
-        self.model_entry.pack()
-
-        tk.Label(self.window, text="Year:").pack()
-        self.year_entry = tk.Entry(self.window)
-        self.year_entry.pack()
-
-        tk.Label(self.window, text="Price per day:").pack()
-        self.price_entry = tk.Entry(self.window)
-        self.price_entry.pack()
-
-        tk.Button(self.window, text="Добавить", command=self.add_car).pack()
-
-    def add_car(self):
-        self.controller.add_car(self.brand_entry.get(), self.model_entry.get(), self.year_entry.get(), self.price_entry.get())
-        self.window.destroy()
-
+    def save_car(self):
+        new_car = {
+            "brand": self.entry_brand.get(),
+            "model": self.entry_model.get(),
+            "year": int(self.entry_year.get()),
+            "rental_price_per_day": float(self.entry_price.get())
+        }
+        if self.car:
+            self.controller.update_car(self.car['car_id'], new_car)
+        else:
+            self.controller.add_car(new_car)
+        self.destroy()
+        
 # Пример запуска
 if __name__ == "__main__":
-    class MockCarRepository(CarRepBase):
-        def __init__(self):
-            super().__init__()
-            self.cars = []
-        
-        def get_by_id(self, car_id):
-            return next((car for car in self.cars if car["car_id"] == car_id), None)
-
-        def get_k_n_short_list(self, k, n):
-            return self.cars[n*k:(n+1)*k]
-
-        def sort_by_field(self, field):
-            self.cars.sort(key=lambda x: x[field])
-
-        def add_car(self, car):
-            self.cars.append(car)
-            self.notify_observers()
-
-        def update_car(self, car_id, new_car):
-            for idx, car in enumerate(self.cars):
-                if car["car_id"] == car_id:
-                    self.cars[idx] = new_car
-                    self.notify_observers()
-                    break
-
-        def delete_car(self, car_id):
-            self.cars = [car for car in self.cars if car["car_id"] != car_id]
-            self.notify_observers()
-
     repo = MockCarRepository()
     controller = CarController(repo)
     view = CarView(controller)
