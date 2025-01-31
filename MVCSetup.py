@@ -122,6 +122,15 @@ class CarView(Observer):
         car_data = self.tree.item(selected_item, "values")
         messagebox.showinfo("Car Details", f"Brand: {car_data[1]}\nModel: {car_data[2]}\nYear: {car_data[3]}\nPrice per day: {car_data[4]}")
 
+    def delete_car(self):
+            selected_item = self.tree.selection()
+            if not selected_item:
+                messagebox.showwarning("Warning", "No car selected")
+                return
+            car_id = self.tree.item(selected_item, "values")[0]
+            self.controller.delete_car(car_id)
+            self.update()
+
 # Форма добавления/редактирования автомобиля
 class CarFormView(tk.Toplevel):
     def __init__(self, parent, controller, car=None):
