@@ -1,71 +1,103 @@
-import tkinter as tk
-from tkinter import ttk
+import json
+import yaml
+import os
+import psycopg2
+from datetime import datetime
+from abc import ABC, abstractmethod
 
-# Интерфейс Наблюдателя
-class Observer:
+# Паттерн Наблюдатель
+class Observer(ABC):
+    @abstractmethod
     def update(self):
         pass
 
-# Модель с поддержкой Наблюдателя
-class CarModel:
-    def __init__(self, repository):
-        self.repository = repository
-        self.observers = []
+class Observable:
+    def __init__(self):
+        self._observers = []
 
     def add_observer(self, observer):
-        self.observers.append(observer)
+        self._observers.append(observer)
+
+    def remove_observer(self, observer):
+        self._observers.remove(observer)
 
     def notify_observers(self):
-        for observer in self.observers:
+        for observer in self._observers:
             observer.update()
 
-    def get_cars(self):
-        return self.repository.get_k_n_short_list(10, 0)
+# Сущность автомобиля
+class Car:
+    def __init__(self, car_id, brand, model, year, rental_price_per_day):
+        self.car_id = car_id
+        self.brand = brand
+        self.model = model
+        self.year = year
+        self.rental_price_per_day = rental_price_per_day
 
-# Представление (GUI)
-class CarView(tk.Tk, Observer):
-    def __init__(self, controller):
+# Базовый репозиторий
+class CarRepBase(Observable, ABC):
+    def __init__(self):
         super().__init__()
-        self.controller = controller
-        self.title("Car Rental")
-        self.geometry("600x400")
 
-        self.tree = ttk.Treeview(self, columns=("ID", "Brand", "Model", "Year"), show="headings")
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("Brand", text="Brand")
-        self.tree.heading("Model", text="Model")
-        self.tree.heading("Year", text="Year")
-        self.tree.pack(fill=tk.BOTH, expand=True)
+    @abstractmethod
+    def get_by_id(self, car_id):
+        pass
 
-        self.controller.model.add_observer(self)
-        self.update()
+    @abstractmethod
+    def get_k_n_short_list(self, k, n):
+        pass
 
-    def update(self):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
-        cars = self.controller.get_cars()
-        for car in cars:
-            self.tree.insert("", "end", values=(car["car_id"], car["brand"], car["model"], car["year"]))
+    @abstractmethod
+    def sort_by_field(self, field):
+        pass
 
-# Контроллер
+    @abstractmethod
+    def add_car(self, car):
+        pass
+
+    @abstractmethod
+    def update_car(self, car_id, new_car):
+        pass
+
+    @abstractmethod
+    def delete_car(self, car_id):
+        pass
+
+    @abstractmethod
+    def get_count(self):
+        pass
+
+# Контроллер для управления логикой
 class CarController:
     def __init__(self, repository):
-        self.model = CarModel(repository)
-        self.view = CarView(self)
-    
-    def get_cars(self):
-        return self.model.get_cars()
+        self.repository = repository
 
-    def run(self):
-        self.view.mainloop()
+    def get_all_cars(self):
+        return self.repository.get_k_n_short_list(100, 0)
 
-# Подключение репозитория (заглушка, вместо репозитория можно передать реальный)
-class MockRepository:
-    def get_k_n_short_list(self, k, n):
-        return [{"car_id": i, "brand": "Brand"+str(i), "model": "Model"+str(i), "year": 2000+i} for i in range(k)]
+    def add_car(self, car):
+        self.repository.add_car(car)
+        self.repository.notify_observers()
 
-# Запуск приложения
-if __name__ == "__main__":
-    repository = MockRepository()
-    controller = CarController(repository)
-    controller.run()
+    def update_car(self, car_id, new_car):
+        self.repository.update_car(car_id, new_car)
+        self.repository.notify_observers()
+
+    def delete_car(self, car_id):
+        self.repository.delete_car(car_id)
+        self.repository.notify_observers()
+
+# View (наблюдатель)
+class CarView(Observer):
+    def __init__(self, controller):
+        self.controller = controller
+        self.controller.repository.add_observer(self)
+
+    def update(self):
+        print("Данные обновлены. Перерисовываем интерфейс.")
+        self.display_cars()
+
+    def display_cars(self):
+        cars = self.controller.get_all_cars()
+        for car in cars:
+            print(f"{car['car_id']}: {car['brand']} {car['model']} - {car['rental_price_per_day']} руб/день")
