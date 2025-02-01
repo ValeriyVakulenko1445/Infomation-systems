@@ -87,6 +87,10 @@ class CarController:
         self.repository.delete_car(car_id)
         self.repository.notify_observers()
 
+    def sort_cars(self, field, reverse=False):
+        self.repository.sort_by_field(field, reverse)
+        self.repository.notify_observers()
+
 # View
 class CarView(Observer):
     def __init__(self, controller):
@@ -119,6 +123,9 @@ class CarView(Observer):
         
         self.btn_delete = tk.Button(self.root, text="Delete", command=self.delete_car)
         self.btn_delete.pack()
+
+        self.btn_sort = tk.Button(self.root, text="Sort by Price", command=lambda: self.sort_cars("rental_price_per_day"))
+        self.btn_sort.pack()
 
     def update(self):
         for row in self.tree.get_children():
@@ -153,6 +160,9 @@ class CarView(Observer):
         for car in filtered_cars:
             self.tree.insert("", tk.END, values=(car['car_id'], car['brand'], car['model'], car['year'], car['rental_price_per_day']))
 
+    def sort_cars(self, field):
+        self.controller.sort_cars(field)
+        self.update()
 
 # Форма добавления/редактирования автомобиля
 class CarFormView(tk.Toplevel):
