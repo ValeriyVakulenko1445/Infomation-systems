@@ -107,6 +107,18 @@ class CarView(Observer):
         self.tree.heading("Price", text="Price per day")
         self.tree.pack(fill=tk.BOTH, expand=True)
         self.tree.bind("<Double-1>", self.show_car_details)
+        
+        self.entry_filter = tk.Entry(self.root)
+        self.entry_filter.pack()
+        
+        self.btn_filter = tk.Button(self.root, text="Filter", command=self.apply_filter)
+        self.btn_filter.pack()
+        
+        self.btn_add = tk.Button(self.root, text="Add", command=self.open_add_car_form)
+        self.btn_add.pack()
+        
+        self.btn_delete = tk.Button(self.root, text="Delete", command=self.delete_car)
+        self.btn_delete.pack()
 
     def update(self):
         for row in self.tree.get_children():
@@ -121,15 +133,26 @@ class CarView(Observer):
             return
         car_data = self.tree.item(selected_item, "values")
         messagebox.showinfo("Car Details", f"Brand: {car_data[1]}\nModel: {car_data[2]}\nYear: {car_data[3]}\nPrice per day: {car_data[4]}")
-
+    
     def delete_car(self):
-            selected_item = self.tree.selection()
-            if not selected_item:
-                messagebox.showwarning("Warning", "No car selected")
-                return
-            car_id = self.tree.item(selected_item, "values")[0]
-            self.controller.delete_car(car_id)
-            self.update()
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "No car selected")
+            return
+        car_id = self.tree.item(selected_item, "values")[0]
+        self.controller.delete_car(car_id)
+        self.update()
+    
+    def open_add_car_form(self):
+        CarFormView(self.root, self.controller)
+    
+    def apply_filter(self):
+        filter_text = self.entry_filter.get().lower()
+        filtered_cars = self.controller.filter_cars(lambda car: filter_text in car['brand'].lower() or filter_text in car['model'].lower())
+        self.tree.delete(*self.tree.get_children())
+        for car in filtered_cars:
+            self.tree.insert("", tk.END, values=(car['car_id'], car['brand'], car['model'], car['year'], car['rental_price_per_day']))
+
 
 # Форма добавления/редактирования автомобиля
 class CarFormView(tk.Toplevel):
