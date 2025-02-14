@@ -49,6 +49,14 @@ class Client:
     def validate_passport_data(passport_data: str) -> bool:
         return bool(re.fullmatch(r"\w{10}", passport_data))
 
+    @staticmethod
+    def validate_contact_number(contact_number: str) -> bool:
+        return bool(re.fullmatch(r"^\+?\d{10,15}$", contact_number))
+
+    @staticmethod
+    def validate_address(address: str) -> bool:
+        return bool(address.strip())
+
     # Остальные методы класса
     def __str__(self):
         return f"Client({self.__client_id}): {self.__full_name}, {self.__contact_number}"
