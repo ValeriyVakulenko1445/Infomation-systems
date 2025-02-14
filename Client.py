@@ -61,6 +61,11 @@ class Client:
     def __str__(self):
         return f"Client({self.__client_id}): {self.__full_name}, {self.__contact_number}"
 
+     def __eq__(self, other) -> bool:
+            if isinstance(other, Client):
+                return self.__client_id == other.__client_id
+            return False
+
 class ClientShort(Client):
     def __init__(self, client: Client):
         super().__init__(
