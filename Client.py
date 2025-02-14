@@ -1,10 +1,12 @@
 import re
 import json
+import yaml
+import mysql.connector
+from abc import ABC, abstractmethod
 
 class Client:
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], str):
-            # Initialize from JSON string
             data = self.parse_json(args[0])
             self.__client_id = data["client_id"]
             self.__full_name = self.validate_and_set("validate_full_name", data["full_name"])
@@ -12,7 +14,6 @@ class Client:
             self.__contact_number = self.validate_and_set("validate_contact_number", data["contact_number"])
             self.__address = self.validate_and_set("validate_address", data["address"])
         elif len(args) == 5:
-            # Инициализация с помощью явных аргументов
             client_id, full_name, passport_data, contact_number, address = args
             self.__client_id = client_id
             self.__full_name = self.validate_and_set("validate_full_name", full_name)
@@ -22,7 +23,6 @@ class Client:
         else:
             raise ValueError("Invalid arguments for constructor")
 
-    # Геттеры
     def get_client_id(self):
         return self.__client_id
 
@@ -38,7 +38,6 @@ class Client:
     def get_address(self):
         return self.__address
 
-    # Сеттеры
     def set_full_name(self, full_name: str):
         self.__full_name = self.validate_and_set("validate_full_name", full_name)
 
@@ -51,7 +50,6 @@ class Client:
     def set_address(self, address: str):
         self.__address = self.validate_and_set("validate_address", address) 
 
-    # Устранение повтора валидации, с помощью главного метода
     @staticmethod
     def validate_and_set(validation_method: str, value: str):
         validator = getattr(Client, validation_method, None)
@@ -59,7 +57,6 @@ class Client:
             raise ValueError(f"Invalid value for {validation_method.replace('validate_', '')}")
         return value
 
-    # Методы валидации
     @staticmethod
     def validate_full_name(full_name: str) -> bool:
         return bool(full_name) and full_name.replace(" ", "").isalpha()
@@ -76,7 +73,6 @@ class Client:
     def validate_address(address: str) -> bool:
         return bool(address)
 
-    # Метод анализа
     @staticmethod
     def parse_json(json_string: str) -> dict:
         try:
@@ -88,11 +84,9 @@ class Client:
         except json.JSONDecodeError:
             raise ValueError("Invalid JSON format")
 
-    # Вывод полной информации об объекте
     def __str__(self):
         return f"Client({self.__client_id}): {self.__full_name}, {self.__contact_number}"
 
-    # Сравнение объектов по client_id
     def __eq__(self, other):
         if isinstance(other, Client):
             return self.__client_id == other.__client_id
@@ -106,3 +100,78 @@ class ClientShort(Client):
 
     def __str__(self):
         return f"ClientShort({self.__full_name}, {self.__contact_number})"
+
+class ClientRepository(ABC):
+    @abstractmethod
+    def read_all(self):
+        pass
+
+    @abstractmethod
+    def write_all(self, data):
+        pass
+
+    @abstractmethod
+    def get_by_id(self, client_id):
+        pass
+
+    @abstractmethod
+    def get_count(self):
+        pass
+
+class ClientRepJson(ClientRepository):
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def read_all(self):
+        with open(self.file_path, 'r') as file:
+            return json.load(file)
+
+    def write_all(self, data):
+        with open(self.file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+
+    def get_by_id(self, client_id):
+        data = self.read_all()
+        for item in data:
+            if item['client_id'] == client_id:
+                return Client(**item)
+        return None
+
+    def get_count(self):
+        return len(self.read_all())
+
+class ClientRepYaml(ClientRepository):
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def read_all(self):
+        with open(self.file_path, 'r') as file:
+            return yaml.safe_load(file)
+
+    def write_all(self, data):
+        with open(self.file_path, 'w') as file:
+            yaml.dump(data, file)
+
+    def get_by_id(self, client_id):
+        data = self.read_all()
+        for item in data:
+            if item['client_id'] == client_id:
+                return Client(**item)
+        return None
+
+    def get_count(self):
+        return len(self.read_all())
+
+class DatabaseConnection:
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(DatabaseConnection, cls).__new__(cls)
+            cls._instance.connection = mysql.connector.connect(
+                host="localhost", user="root", password="password", database="car_rental"
+            )
+        return cls._instance
+
+    def get_connection(self):
+        return self.connection
