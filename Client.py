@@ -2,7 +2,6 @@ import re
 import json
 
 class Client:
-
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], str):
             # Initialize from JSON string
@@ -22,7 +21,6 @@ class Client:
             self.__address = self.validate_and_set("validate_address", address)
         else:
             raise ValueError("Invalid arguments for constructor")
-
 
     # Геттеры
     def get_client_id(self):
@@ -53,7 +51,7 @@ class Client:
     def set_address(self, address: str):
         self.__address = self.validate_and_set("validate_address", address) 
 
-# Устранение повтора валидации, с помощью главного метода
+    # Устранение повтора валидации, с помощью главного метода
     @staticmethod
     def validate_and_set(validation_method: str, value: str):
         validator = getattr(Client, validation_method, None)
@@ -61,19 +59,17 @@ class Client:
             raise ValueError(f"Invalid value for {validation_method.replace('validate_', '')}")
         return value
 
-#Методы валидации
+    # Методы валидации
     @staticmethod
     def validate_full_name(full_name: str) -> bool:
         return bool(full_name) and full_name.replace(" ", "").isalpha()
 
     @staticmethod
     def validate_passport_data(passport_data: str) -> bool:
-#Паспортные данные идут в формате букв-цифр и имеют определенную длину
         return bool(re.fullmatch(r"\w{10}", passport_data))
 
-@staticmethod
+    @staticmethod
     def validate_contact_number(contact_number: str) -> bool:
-#Тут номер пишется в допустимом формате
         return bool(re.fullmatch(r"\+?\d{10,15}", contact_number))
 
     @staticmethod
@@ -92,4 +88,21 @@ class Client:
         except json.JSONDecodeError:
             raise ValueError("Invalid JSON format")
 
+    # Вывод полной информации об объекте
+    def __str__(self):
+        return f"Client({self.__client_id}): {self.__full_name}, {self.__contact_number}"
 
+    # Сравнение объектов по client_id
+    def __eq__(self, other):
+        if isinstance(other, Client):
+            return self.__client_id == other.__client_id
+        return False
+
+class ClientShort(Client):
+    def __init__(self, client: Client):
+        self.__client_id = client.get_client_id()
+        self.__full_name = client.get_full_name()
+        self.__contact_number = client.get_contact_number()
+
+    def __str__(self):
+        return f"ClientShort({self.__full_name}, {self.__contact_number})"
