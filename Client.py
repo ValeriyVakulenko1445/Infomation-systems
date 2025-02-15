@@ -47,7 +47,8 @@ class Client:
 
     @staticmethod
     def validate_passport_data(passport_data: str) -> bool:
-        return bool(re.fullmatch(r"\w{10}", passport_data))
+        # Проверка, что строка состоит только из 10 цифр
+        return bool(re.fullmatch(r"\d{10}", passport_data))
 
     @staticmethod
     def validate_contact_number(contact_number: str) -> bool:
