@@ -1,54 +1,83 @@
 import re
 import json
-import yaml
-import mysql.connector
-from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Callable, Optional
+
 
 class Client:
-        def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], str):                #Принимает 1 строку JSON
-            data = json.loads(args[0])
-            self.__client_id = data["client_id"]
-            self.__full_name = self.main_validate("validate_full_name", data["full_name"])
-            self.__passport_data = self.main_validate("validate_passport_data", data["passport_data"])
-            self.__contact_number = self.main_validate("validate_contact_number", data["contact_number"])
-            self.__address = self.main_validate("validate_address", data["address"])
-        elif len(args) == 5:                #Принимает 5 строк
-            client_id, full_name, passport_data, contact_number, address = args
-            self.__client_id = client_id
-            self.__full_name = self.main_validate("validate_full_name", full_name)
-            self.__passport_data = self.main_validate("validate_passport_data", passport_data)
-            self.__contact_number = self.main_validate("validate_contact_number", contact_number)
-            self.__address = self.main_validate("validate_address", address)
-        else:
-            raise ValueError("Invalid arguments for constructor")
+    def __init__(self, client_id: int, full_name: str, passport_data: str, contact_number: str, address: str):
+        self.__client_id = client_id
+        self.__full_name = self.validate_full_name(full_name)
+        self.__passport_data = self.validate_passport_data(passport_data)
+        self.__contact_number = self.validate_contact_number(contact_number)
+        self.__address = self.validate_address(address)
 
-    # Геттеры и сеттеры
-    def get_client_id(self): 
+    @classmethod
+    def from_json(cls, json_str: str):
+        #Альтернативный конструктор для создания объекта из JSON
+        data = json.loads(json_str)
+        return cls(
+            data["client_id"],
+            data["full_name"],
+            data["passport_data"],
+            data["contact_number"],
+            data["address"]
+        )
+
+    # Геттеры
+    def get_client_id(self):
         return self.__client_id
-    def get_full_name(self): 
+
+    def get_full_name(self):
         return self.__full_name
-    def get_passport_data(self): 
+
+    def get_passport_data(self):
         return self.__passport_data
-    def get_contact_number(self): 
+
+    def get_contact_number(self):
         return self.__contact_number
-    def get_address(self): 
+
+    def get_address(self):
         return self.__address
 
-    def set_full_name(self, full_name):
-        self.__full_name = self.main_validate("validate_full_name", full_name)
+    # Сеттеры
+    def set_full_name(self, full_name: str):
+        self.__full_name = self.validate_full_name(full_name)
 
-    def set_passport_data(self, passport_data):
-        self.__passport_data = self.main_validate("validate_passport_data", passport_data)
+    def set_passport_data(self, passport_data: str):
+        self.__passport_data = self.validate_passport_data(passport_data)
 
-    def set_contact_number(self, contact_number):
-        self.__contact_number = self.main_validate("validate_contact_number", contact_number)
+    def set_contact_number(self, contact_number: str):
+        self.__contact_number = self.validate_contact_number(contact_number)
 
-    def set_address(self, address):
-        self.__address = self.main_validate("validate_address", address)
+    def set_address(self, address: str):
+        self.__address = self.validate_address(address)
 
+    # Методы валидации
+        """Методы валидации возвращают валидированное значение str вместо bool, так как проще сразу использовать корректные данные без дополнительной обработки."""
+    @staticmethod
+    def validate_full_name(full_name: str) -> str:
+        if full_name and full_name.replace(" ", "").isalpha():
+            return full_name
+        raise ValueError(f"Invalid full name: {full_name}")
+
+    @staticmethod
+    def validate_passport_data(passport_data: str) -> str:
+        if re.fullmatch(r"\d{10}", passport_data):
+            return passport_data
+        raise ValueError(f"Invalid passport data: {passport_data}")
+
+    @staticmethod
+    def validate_contact_number(contact_number: str) -> str:
+        if re.fullmatch(r"^\+?\d{10,15}$", contact_number):
+            return contact_number
+        raise ValueError(f"Invalid contact number: {contact_number}")
+
+    @staticmethod
+    def validate_address(address: str) -> str:
+        if address.strip():
+            return address
+        raise ValueError(f"Invalid address: {address}")
+
+    # Методы строкового представления
     def full_string(self):
         return (f"Client({self.__client_id}): {self.__full_name}, "
                 f"Passport: {self.__passport_data}, Contact: {self.__contact_number}, Address: {self.__address}")
@@ -56,60 +85,26 @@ class Client:
     def short_string(self):
         return f"ClientShort({self.__full_name}, {self.__contact_number})"
 
-    def set_full_name(self, full_name: str):
-        self.__full_name = self.validate_and_set("validate_full_name", full_name)
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Client):
+            return self.__client_id == other.__client_id
+        return False
 
-#Главный метод валидации
-    def main_validate(self, method_name, value):
-        if not value:
-            return value
-        method = getattr(self, method_name)
-        if method(value):
-            return value
-        else:
-            raise ValueError(f"Invalid value for {method_name}: {value}")
-    
-    # Методы валидации
-    @staticmethod
-    def validate_full_name(full_name: str) -> bool:
-        return bool(full_name) and full_name.replace(" ", "").isalpha()
 
-    @staticmethod
-    def validate_passport_data(passport_data: str) -> bool:
-        # Проверка, что строка состоит только из 10 цифр
-        return bool(re.fullmatch(r"\d{10}", passport_data))
-
-    @staticmethod
-    def validate_contact_number(contact_number: str) -> bool:
-        return bool(re.fullmatch(r"^\+?\d{10,15}$", contact_number))
-
-    @staticmethod
-    def validate_address(address: str) -> bool:
-        return bool(address.strip())
-
-    # Остальные методы класса
-    def __str__(self):
-        return f"Client({self.__client_id}): {self.__full_name}, {self.__contact_number}"
-
-        #Метод сравнения
-     def __eq__(self, other) -> bool:
-            if isinstance(other, Client):
-                return self.__client_id == other.__client_id
-            return False
-
-#Краткая информация о клиенте
-class ClientShort(Client):
+class ClientShort:
+    """Краткая информация о клиенте. Убрано наследование,Тепрерь он содержит его"""
     def __init__(self, client: Client):
-        super().__init__(
-            client.get_client_id(),
-            client.get_full_name(),
-            "",  # Убираем паспортные данные
-            client.get_contact_number(),
-            ""  # Убираем адрес
-        )
+        self.__client = client  # Храним экземпляр Client
+
+    def get_full_name(self):
+        return self.__client.get_full_name()
+
+    def get_contact_number(self):
+        return self.__client.get_contact_number()
 
     def full_string(self):
-        return self.short_string()  # Полная строка для ClientShort — это краткая версия
+        return f"ClientShort({self.get_full_name()}, {self.get_contact_number()})"
+
 
 class ClientRepository(ABC):
     @abstractmethod
