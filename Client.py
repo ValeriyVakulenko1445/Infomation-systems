@@ -8,14 +8,14 @@ from typing import Callable, Optional
 
 class Client:
         def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], str):
+        if len(args) == 1 and isinstance(args[0], str):                #Принимает 1 строку JSON
             data = json.loads(args[0])
             self.__client_id = data["client_id"]
             self.__full_name = self.main_validate("validate_full_name", data["full_name"])
             self.__passport_data = self.main_validate("validate_passport_data", data["passport_data"])
             self.__contact_number = self.main_validate("validate_contact_number", data["contact_number"])
             self.__address = self.main_validate("validate_address", data["address"])
-        elif len(args) == 5:
+        elif len(args) == 5:                #Принимает 5 строк
             client_id, full_name, passport_data, contact_number, address = args
             self.__client_id = client_id
             self.__full_name = self.main_validate("validate_full_name", full_name)
@@ -59,6 +59,7 @@ class Client:
     def set_full_name(self, full_name: str):
         self.__full_name = self.validate_and_set("validate_full_name", full_name)
 
+#Главный метод валидации
     def main_validate(self, method_name, value):
         if not value:
             return value
@@ -90,11 +91,13 @@ class Client:
     def __str__(self):
         return f"Client({self.__client_id}): {self.__full_name}, {self.__contact_number}"
 
+        #Метод сравнения
      def __eq__(self, other) -> bool:
             if isinstance(other, Client):
                 return self.__client_id == other.__client_id
             return False
 
+#Краткая информация о клиенте
 class ClientShort(Client):
     def __init__(self, client: Client):
         super().__init__(
