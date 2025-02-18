@@ -7,21 +7,21 @@ from datetime import datetime
 from typing import Callable, Optional
 
 class Client:
-    def __init__(self, *args):
+        def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], str):
-            data = self.parse_json(args[0])
+            data = json.loads(args[0])
             self.__client_id = data["client_id"]
-            self.__full_name = self.validate_and_set("validate_full_name", data["full_name"])
-            self.__passport_data = self.validate_and_set("validate_passport_data", data["passport_data"])
-            self.__contact_number = self.validate_and_set("validate_contact_number", data["contact_number"])
-            self.__address = self.validate_and_set("validate_address", data["address"])
+            self.__full_name = self.main_validate("validate_full_name", data["full_name"])
+            self.__passport_data = self.main_validate("validate_passport_data", data["passport_data"])
+            self.__contact_number = self.main_validate("validate_contact_number", data["contact_number"])
+            self.__address = self.main_validate("validate_address", data["address"])
         elif len(args) == 5:
             client_id, full_name, passport_data, contact_number, address = args
             self.__client_id = client_id
-            self.__full_name = self.validate_and_set("validate_full_name", full_name)
-            self.__passport_data = self.validate_and_set("validate_passport_data", passport_data)
-            self.__contact_number = self.validate_and_set("validate_contact_number", contact_number)
-            self.__address = self.validate_and_set("validate_address", address)
+            self.__full_name = self.main_validate("validate_full_name", full_name)
+            self.__passport_data = self.main_validate("validate_passport_data", passport_data)
+            self.__contact_number = self.main_validate("validate_contact_number", contact_number)
+            self.__address = self.main_validate("validate_address", address)
         else:
             raise ValueError("Invalid arguments for constructor")
 
@@ -37,8 +37,36 @@ class Client:
     def get_address(self): 
         return self.__address
 
+    def set_full_name(self, full_name):
+        self.__full_name = self.main_validate("validate_full_name", full_name)
+
+    def set_passport_data(self, passport_data):
+        self.__passport_data = self.main_validate("validate_passport_data", passport_data)
+
+    def set_contact_number(self, contact_number):
+        self.__contact_number = self.main_validate("validate_contact_number", contact_number)
+
+    def set_address(self, address):
+        self.__address = self.main_validate("validate_address", address)
+
+    def full_string(self):
+        return (f"Client({self.__client_id}): {self.__full_name}, "
+                f"Passport: {self.__passport_data}, Contact: {self.__contact_number}, Address: {self.__address}")
+
+    def short_string(self):
+        return f"ClientShort({self.__full_name}, {self.__contact_number})"
+
     def set_full_name(self, full_name: str):
         self.__full_name = self.validate_and_set("validate_full_name", full_name)
+
+    def main_validate(self, method_name, value):
+        if not value:
+            return value
+        method = getattr(self, method_name)
+        if method(value):
+            return value
+        else:
+            raise ValueError(f"Invalid value for {method_name}: {value}")
     
     # Методы валидации
     @staticmethod
@@ -72,13 +100,13 @@ class ClientShort(Client):
         super().__init__(
             client.get_client_id(),
             client.get_full_name(),
-            "",
+            "",  # Убираем паспортные данные
             client.get_contact_number(),
-            ""
+            ""  # Убираем адрес
         )
-        
-    def __str__(self):
-        return f"ClientShort({self.get_full_name()}, {self.get_contact_number()})"
+
+    def full_string(self):
+        return self.short_string()  # Полная строка для ClientShort — это краткая версия
 
 class ClientRepository(ABC):
     @abstractmethod
