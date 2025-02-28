@@ -92,9 +92,9 @@ class Client:
 
 
 class ClientShort:
-    """Краткая информация о клиенте. Убрано наследование,Тепрерь он содержит его"""
+    """Краткая информация о клиенте"""
     def __init__(self, client: Client):
-        self.__client = client  # Храним экземпляр Client
+        self.__client = client 
 
     def get_full_name(self):
         return self.__client.get_full_name()
