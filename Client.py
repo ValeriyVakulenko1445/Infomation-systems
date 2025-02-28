@@ -84,7 +84,7 @@ class Client:
 
     def short_string(self):
         return f"ClientShort({self.__full_name}, {self.__contact_number})"
-
+# Позволяет сравнивать клиентов по client_id, вызывается автоматически при ==
     def __eq__(self, other) -> bool:
         if isinstance(other, Client):
             return self.__client_id == other.__client_id
