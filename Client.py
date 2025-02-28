@@ -108,71 +108,77 @@ class ClientShort:
 
 class ClientRepository(ABC):
     @abstractmethod
-    def read_all(self): 
+    def read_all(self):  # Получаем полный список клиентов
         pass
     
     @abstractmethod
-    def write_all(self, data): 
+    def write_all(self, data): # Запись списка клиентов в хранилище
         pass
     
     @abstractmethod
-    def get_by_id(self, client_id): 
+    def get_by_id(self, client_id): # Поиск по client_id, возвращает объект, если не найдет вернет None
         pass
     
     @abstractmethod
-    def get_k_n_short_list(self, k: int, n: int): 
+    def get_k_n_short_list(self, k: int, n: int): # Считывает данные, возвращает список клиентов(берется к записей начиная с n*к)
         pass
     
     @abstractmethod
-    def sort_by_field(self, field: str): 
+    def sort_by_field(self, field: str): # Сортировка по указанному полю, возвращает уже отсортированный список
         pass
     
     @abstractmethod
-    def add_client(self, client: Client): 
+    def add_client(self, client: Client): # Добавление нового клиента
         pass
     
     @abstractmethod
-    def update_client(self, client_id, updated_client: Client): 
+    def update_client(self, client_id, updated_client: Client): # Обновление информации о клиенте
         pass
     
     @abstractmethod
-    def delete_client(self, client_id): 
+    def delete_client(self, client_id): # Удаление клиента по id
         pass
     
     @abstractmethod
-    def get_count(self): 
+    def get_count(self): # Подсчет кол-ва клиентов (возвращает количество клиентов)
         pass
 
 class ClientRepJson(ClientRepository):
     def __init__(self, file_path: str):
         self.file_path = file_path
-
+        
+# Чтение JSON-файла. Если файл пустой или его нету, возвращает пустой список 
     def read_all(self) -> list:
         try:
             with open(self.file_path, 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return []
-
+            
+# Запись списка клиентов в JSON-файл( с отступами)
     def write_all(self, data: list):
         with open(self.file_path, 'w') as f:
             json.dump(data, f, indent=4)
-
+            
+#Чтение данных. Ищет клиента по client_id, если нашел, возвращает объект, иначе возвращает None
     def get_by_id(self, client_id: int) -> Optional[Client]:
         data = self.read_all()
         for item in data:
             if item['client_id'] == client_id:
                 return Client(**item)
         return None
-
+        
+# Возвращает список клиентов. Берется k записей, начиная с n*k
     def get_k_n_short_list(self, k: int, n: int) -> list[ClientShort]:
         data = self.read_all()[n*k : (n+1)*k]
         return [ClientShort(Client(**item)) for item in data]
-
+        
+# Сортирует по field. Возвращает отсортированный список
     def sort_by_field(self, field: str) -> list:
         data = self.read_all()
         return sorted(data, key=lambda x: x.get(field, ""))
-
+        
+# Определение нового client_id, который будет на 1 больше максимального. Добавляет клиента и записывает обратно
     def add_client(self, client: Client):
         data = self.read_all()
         new_id = max([c['client_id'] for c in data], default=0) + 1
@@ -184,7 +190,8 @@ class ClientRepJson(ClientRepository):
             'address': client.get_address()
         })
         self.write_all(data)
-
+        
+# Обновляет информацию о клиенте, если он найден. Записывает обновленные данные
     def update_client(self, client_id: int, updated_client: Client):
         data = self.read_all()
         for item in data:
@@ -198,15 +205,18 @@ class ClientRepJson(ClientRepository):
                 self.write_all(data)
                 return
         raise ValueError(f"Client {client_id} not found")
-
+        
+# Удаление клиента. Записывает обновленный список
     def delete_client(self, client_id: int):
         data = [c for c in self.read_all() if c['client_id'] != client_id]
         self.write_all(data)
-
+        
+# Возвращает количество клиентов
     def get_count(self) -> int:
         return len(self.read_all())
-
+# Данный Класс наследуется от ClientRepJson, но тут заменяются методы: "read_all" и "write_all", чтобы можно было работать с YAML.
 class ClientRepYaml(ClientRepJson):
+# Аналогично с JSON
     def read_all(self) -> list:
         try:
             with open(self.file_path, 'r') as f:
@@ -214,16 +224,20 @@ class ClientRepYaml(ClientRepJson):
         except (FileNotFoundError, yaml.YAMLError):
             return []
 
+# Аналогично с JSON
     def write_all(self, data: list):
         with open(self.file_path, 'w') as f:
             yaml.dump(data, f)
 
+# Класс подключения к Базе данных, используется паттерн Одиночка (гарантирует что будет ТОЛЬКО одно подключение к БД)
 class DatabaseConnection:
-    _instance = None
     
+    _instance = None # Статическая переменная, которая будет хранить единственный экземпляр класса
+
+# Метод отвечает за создание экземпляра класса, в нем реализована проверка Если cls._instance == None, создаем объект и устанавливаем соединение с MySQL, если же объект уже существует, просто вернет его.
     def __new__(cls):
         if not cls._instance:
-            cls._instance = super().__new__(cls)
+            cls._instance = super().__new__(cls) # super - функция, которая позволяет вызвать метоы родительского класса
             cls._instance.connection = mysql.connector.connect(
                 host="localhost",
                 user="root",
@@ -236,16 +250,20 @@ class DatabaseConnection:
         return self.connection
 
 class ClientRepDB(ClientRepository):
+    
+#Подключение к базе, через DatabaseConnection
     def __init__(self):
         self.db = DatabaseConnection().get_connection()
 
+# Выполняет SQL-запрос SELECT * FROM clients WHERE client_id = %s, если найден, создает Client
     def get_by_id(self, client_id: int) -> Optional[Client]:
         cursor = self.db.cursor(dictionary=True)
         cursor.execute("SELECT * FROM clients WHERE client_id = %s", (client_id,))
         result = cursor.fetchone()
         cursor.close()
         return Client(**result) if result else None
-
+        
+# Запрашивает k записей с OFFSET n*k
     def get_k_n_short_list(self, k: int, n: int) -> list[ClientShort]:
         cursor = self.db.cursor(dictionary=True)
         cursor.execute("SELECT * FROM clients LIMIT %s OFFSET %s", (k, n*k))
@@ -253,6 +271,7 @@ class ClientRepDB(ClientRepository):
         cursor.close()
         return [ClientShort(Client(**item)) for item in results]
 
+# Выполняет INSERT INTO clients (Добавление клиента)
     def add_client(self, client: Client):
         cursor = self.db.cursor()
         cursor.execute(
@@ -265,6 +284,7 @@ class ClientRepDB(ClientRepository):
         self.db.commit()
         cursor.close()
 
+# Выполняет UPDATE clients SET ... WHERE client_id = %s
     def update_client(self, client_id: int, updated_client: Client):
         cursor = self.db.cursor()
         cursor.execute(
@@ -278,19 +298,22 @@ class ClientRepDB(ClientRepository):
         )
         self.db.commit()
         cursor.close()
-
+        
+# Выполняет DELETE FROM clients WHERE client_id = %s
     def delete_client(self, client_id: int):
         cursor = self.db.cursor()
         cursor.execute("DELETE FROM clients WHERE client_id = %s", (client_id,))
         self.db.commit()
         cursor.close()
 
+# Выполняет SELECT COUNT(*) FROM clients (Возврат кол-ва клиентов)
     def get_count(self) -> int:
         cursor = self.db.cursor()
         cursor.execute("SELECT COUNT(*) FROM clients")
         count = cursor.fetchone()[0]
         cursor.close()
         return count
+
 
 class ClientDBAdapter(ClientRepDB):
     def read_all(self):
