@@ -315,7 +315,7 @@ class ClientRepDB(ClientRepository):
         return count
 
 
-class ClientDBAdapter(ClientRepDB):
+class ClientDBAdapter(ClientRepDB): # Адаптер для ClientRepDB, который запрещает read_all() и write_all(), так как БД использует SQL-запросы
     def read_all(self):
         raise NotImplementedError("Direct read_all not supported for DB")
     
@@ -332,15 +332,16 @@ class FilterSortDecorator(ClientRepository):
         self.repository = repository
         self.filter_func = filter_func
         self.sort_key = sort_key
-
+# Данные методы реализуют паттерн "Декоратор", для того чтобы реализовать фильтрацию и сортировку у ClientRepository
     def get_k_n_short_list(self, k: int, n: int) -> list[ClientShort]:
-        data = self.repository.get_k_n_short_list(k, n)
+        data = self.repository.get_k_n_short_list(k, n) # Получаем
         if self.filter_func:
-            data = list(filter(self.filter_func, data))
+            data = list(filter(self.filter_func, data)) # Фильтруем данные
         if self.sort_key:
-            data.sort(key=self.sort_key)
-        return data
-
+            data.sort(key=self.sort_key) # Сортируем данные
+        return data # Возвращаем результат
+        
+        # Метод возвращает количество клиентов, учитывая фильтрацию
     def get_count(self) -> int:
         if self.filter_func:
             return len(list(filter(self.filter_func, 
